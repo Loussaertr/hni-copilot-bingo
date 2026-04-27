@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Copilot Chat Bingo — HNI IT</title>
+<style>
+  :root {
+    --red:#b00c00;--red-bright:#ef4f3e;--red-light:#fde8e6;
+    --denim:#265dad;--denim-light:#d1e6ff;--denim-dark:#1a3f7a;
+    --lime:#ccff1a;--lime-dark:#7a9900;
+    --gray:#7c878e;--smoke:#f4f4f4;--white:#ffffff;--black:#111111;
+    --border:#e2e2e2;--radius:10px;--radius-lg:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--smoke);color:var(--black)}
+  body{display:flex;flex-direction:column;min-height:100vh}
+
+  /* ── Header ── */
+  .header{background:var(--red);padding:0.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+  .header-left{display:flex;align-items:center;gap:12px}
+  .logo-mark{width:36px;height:36px;background:var(--white);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .logo-mark svg{width:22px;height:22px}
+  .header-title{font-size:17px;font-weight:600;color:var(--white);letter-spacing:0.01em}
+  .header-sub{font-size:12px;color:rgba(255,255,255,0.7);margin-top:1px}
+  .live-badge{background:var(--lime);color:var(--lime-dark);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:0.03em;text-transform:uppercase}
+
+  /* ── Nav tabs ── */
+  .nav{background:var(--white);border-bottom:1px solid var(--border);padding:0 1.25rem;display:flex;gap:0;flex-shrink:0}
+  .nav-tab{padding:11px 18px;font-size:13px;font-weight:500;color:var(--gray);cursor:pointer;border:none;background:none;border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+  .nav-tab:hover{color:var(--red)}
+  .nav-tab.on{color:var(--red);border-bottom-color:var(--red)}
+
+  /* ── Main layout ── */
+  .main{flex:1;padding:1.25rem;max-width:900px;margin:0 auto;width:100%}
+  .view{display:none}.view.active{display:block}
+
+  /* ── Name selector ── */
+  .name-row{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:0.875rem 1rem;margin-bottom:1rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .name-row label{font-size:13px;color:var(--gray);white-space:nowrap}
+  .name-row select{font-size:13px;padding:6px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--black);cursor:pointer;flex:1;min-width:180px;max-width:280px}
+  .name-row select:focus{outline:none;border-color:var(--red)}
+  .name-hint{font-size:12px;color:var(--gray);margin-left:auto}
+
+  /* ── Stats row ── */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:1rem}
+  .stat{background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:0.875rem;text-align:center}
+  .stat-n{font-size:24px;font-weight:700;color:var(--red)}
+  .stat-l{font-size:11px;color:var(--gray);margin-top:2px;text-transform:uppercase;letter-spacing:0.04em}
+
+  /* ── Bingo card ── */
+  .card-wrap{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem;margin-bottom:1rem}
+  .col-hdrs{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:6px}
+  .col-hdr{text-align:center;font-size:22px;font-weight:700;color:var(--red);line-height:1}
+  .bingo-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+  .cell{background:var(--smoke);border:1.5px solid var(--border);border-radius:8px;padding:7px 5px;text-align:center;font-size:10.5px;line-height:1.35;color:var(--black);cursor:pointer;min-height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:all .12s;user-select:none}
+  .cell:hover:not(.free):not(.done):not(.bingo-line){border-color:var(--red-bright);background:var(--red-light);transform:scale(1.02)}
+  .cell.done{background:var(--denim-light);border-color:var(--denim);color:var(--denim-dark);font-weight:600}
+  .cell.bingo-line{background:var(--lime);border-color:var(--lime-dark);color:var(--lime-dark);font-weight:600}
+  .cell.free{background:var(--red);color:var(--white);font-weight:700;font-size:14px;cursor:default;border-color:var(--red)}
+  .cell-icon{font-size:9px;color:var(--gray);display:flex;align-items:center;gap:2px;margin-top:1px}
+  .cell.done .cell-icon,.cell.bingo-line .cell-icon{display:none}
+  .cell-check{font-size:9px;color:var(--denim);display:none}
+  .cell.done .cell-check{display:block;color:var(--denim)}
+  .cell.bingo-line .cell-check{display:block;color:var(--lime-dark)}
+
+  /* ── Card footer ── */
+  .card-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:0.5rem}
+  .card-status{font-size:12px;color:var(--gray)}
+  .btn-reset{font-size:12px;padding:5px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--white);color:var(--gray);cursor:pointer}
+  .btn-reset:hover{border-color:var(--red);color:var(--red)}
+
+  /* ── Bingo banner ── */
+  .bingo-banner{background:var(--lime);border:1.5px solid var(--lime-dark);border-radius:var(--radius);padding:12px 16px;font-size:14px;font-weight:600;color:var(--lime-dark);text-align:center;margin-top:0.75rem;display:none}
+
+  /* ── Modal overlay ── */
+  .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100;align-items:center;justify-content:center;padding:1rem}
+  .overlay.open{display:flex}
+  .modal{background:var(--white);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+  .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:0.5rem}
+  .modal-title{font-size:15px;font-weight:600;color:var(--black)}
+  .modal-close{background:none;border:none;cursor:pointer;color:var(--gray);font-size:18px;line-height:1;padding:0}
+  .modal-close:hover{color:var(--red)}
+  .modal-task{font-size:12px;color:var(--gray);padding-bottom:1rem;border-bottom:1px solid var(--border);margin-bottom:1rem}
+  .upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:1.5rem 1rem;text-align:center;cursor:pointer;position:relative;transition:all .15s;margin-bottom:1rem}
+  .upload-zone:hover,.upload-zone.drag{border-color:var(--red-bright);background:var(--red-light)}
+  .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .upload-icon{width:44px;height:44px;background:var(--smoke);border-radius:10px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center}
+  .upload-lbl{font-size:13px;font-weight:600;color:var(--black);margin-bottom:3px}
+  .upload-sub{font-size:11px;color:var(--gray)}
+  .preview-wrap{margin-bottom:1rem;text-align:center;display:none}
+  .preview-wrap img{max-width:100%;max-height:150px;border-radius:8px;border:1px solid var(--border)}
+  .preview-meta{font-size:11px;color:var(--gray);margin-top:6px}
+  .preview-change{font-size:11px;color:var(--denim);cursor:pointer;text-decoration:underline;margin-top:4px;display:block}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:0.25rem}
+  .btn-cancel{font-size:13px;padding:8px 16px;border:1.5px solid var(--border);border-radius:8px;background:var(--white);color:var(--gray);cursor:pointer}
+  .btn-cancel:hover{border-color:var(--gray)}
+  .btn-confirm{font-size:13px;font-weight:600;padding:8px 18px;background:var(--red);color:var(--white);border:none;border-radius:8px;cursor:pointer;opacity:0.35;pointer-events:none;transition:opacity .15s}
+  .btn-confirm.ready{opacity:1;pointer-events:auto}
+  .btn-confirm.ready:hover{background:var(--red-bright)}
+
+  /* ── Leaderboard ── */
+  .lb-controls{display:flex;align-items:center;gap:8px;margin-bottom:0.875rem;flex-wrap:wrap}
+  .lb-search{font-size:13px;padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--black);flex:1;min-width:160px;max-width:260px}
+  .lb-search:focus{outline:none;border-color:var(--red)}
+  .toggle-label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray);cursor:pointer}
+  .lb-card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+  .lb-scroll{overflow-x:auto}
+  .lb-table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px}
+  .lb-table th{text-align:left;padding:9px 12px;font-size:11px;font-weight:600;color:var(--gray);border-bottom:1.5px solid var(--border);text-transform:uppercase;letter-spacing:0.05em;background:var(--smoke)}
+  .lb-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--black);vertical-align:middle}
+  .lb-table tr:last-child td{border-bottom:none}
+  .lb-table tbody tr:hover td{background:#fafafa}
+  .pb-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+  .pb-fill{height:100%;background:var(--denim);border-radius:3px;transition:width .3s}
+  .bingo-pill{display:inline-block;background:var(--lime);color:var(--lime-dark);font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;margin-left:5px}
+  .shot-pill{display:inline-block;background:var(--denim-light);color:var(--denim-dark);font-size:10px;padding:2px 7px;border-radius:20px}
+  .empty-row td{text-align:center;color:var(--gray);font-size:13px;padding:2rem!important}
+  .lb-foot{padding:0.625rem 1rem;font-size:11px;color:var(--gray);text-align:right;border-top:1px solid var(--border);background:var(--smoke)}
+
+  /* ── Responsive ── */
+  @media(max-width:540px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .col-hdr{font-size:18px}
+    .cell{min-height:62px;font-size:9.5px}
+    .header-title{font-size:15px}
+    .main{padding:0.875rem}
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo-mark">
+      <svg viewBox="0 0 22 22" fill="none">
+        <rect x="1" y="1" width="9" height="9" rx="2" fill="#b00c00"/>
+        <rect x="12" y="1" width="9" height="9" rx="2" fill="#b00c00"/>
+        <rect x="1" y="12" width="9" height="9" rx="2" fill="#b00c00"/>
+        <rect x="12" y="12" width="9" height="9" rx="2" fill="#ccff1a"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Copilot Chat Bingo</div>
+      <div class="header-sub">HNI IT Department Challenge</div>
+    </div>
+  </div>
+  <span class="live-badge">Live</span>
+</header>
+
+<nav class="nav">
+  <button class="nav-tab on" id="btn-board" onclick="switchView('board')">My card</button>
+  <button class="nav-tab" id="btn-lb" onclick="switchView('lb')">Leaderboard</button>
+</nav>
+
+<main class="main">
+
+  <!-- ── BOARD VIEW ── -->
+  <div id="view-board" class="view active">
+    <div class="name-row">
+      <label for="member-select">Playing as:</label>
+      <select id="member-select" onchange="onMemberChange()">
+        <option value="">— select your name —</option>
+        <option>Anju Ahluwalia</option><option>Bobby Ahluwalia</option><option>Fayissolath Akanho</option>
+        <option>Shahnawaz Alam</option><option>Justin Allee</option><option>Robert Alsten</option>
+        <option>Joshua Anderson</option><option>Kate Backous</option><option>Matt Baker</option>
+        <option>Shankhayan Basu</option><option>Adam Begarly</option><option>Umapathy Bhattar</option>
+        <option>Ben Bizak</option><option>Matt Boardrow</option><option>Marcy Boeh</option>
+        <option>Tom Booth</option><option>Katie Briesch</option><option>Amy Brinser</option>
+        <option>Jeremiah Bristow</option><option>Cindy Brooks</option><option>Julie Brugger</option>
+        <option>Brad Buechler</option><option>Jeffrey Caldwell</option><option>Justin Cano</option>
+        <option>Brittany Carney</option><option>Kate Carter</option><option>Rohit Chilakala</option>
+        <option>Andrew Christen</option><option>Alex Corwin</option><option>David Ferreira e Cruz</option>
+        <option>Sandra Darnielle</option><option>Alwin Davids</option><option>Drew DeZeeuw</option>
+        <option>Brandi Dennis</option><option>Matsyagiri Devalapally</option><option>Jeff Devlin</option>
+        <option>Sarah Dixon</option><option>Casey Dodder</option><option>Ross Donelson</option>
+        <option>Robert Dotson</option><option>Jerry Dusek</option><option>Adam Earp</option>
+        <option>Todd Easterla</option><option>Stephanie Edwards</option><option>Liz Elliott</option>
+        <option>Rue Ellis</option><option>AJ Ellison</option><option>Kyle Empen</option>
+        <option>Ben Frere</option><option>Tiffany Fulrath</option><option>Brandon Garrett</option>
+        <option>Jesse Ghere</option><option>Ali Girer</option><option>William Gissel</option>
+        <option>Michael Grothusen</option><option>Srikanth Gubba</option><option>Talitha Haag</option>
+        <option>David Hackbarth</option><option>Gloria Hairston</option><option>Steve Halka</option>
+        <option>Kevin Hamilton</option><option>John Hanson</option><option>Wes Harden</option>
+        <option>Rachelle Harris</option><option>Lisa Harter</option><option>Amanda Heindel</option>
+        <option>Shay Helm</option><option>Scott Hentscher</option><option>Bapu Hirave</option>
+        <option>Patrick Holler</option><option>Eric Jaskolka</option><option>Edwin Johnson</option>
+        <option>Kay Jones</option><option>Tim Junis</option><option>Javaid Kalota</option>
+        <option>Prabhjot Kaur</option><option>Keith Keller</option><option>Jody Kirk</option>
+        <option>Russ Klaren</option><option>Erik Knouse</option><option>Hemant Kumar</option>
+        <option>Tony Van Laarhoven</option><option>Ajay Lageshetty</option><option>Tyler Lamb</option>
+        <option>Sam Lane</option><option>Tracy Lane</option><option>Luke Lawson</option>
+        <option>Jeff Lenninger</option><option>David Lineback</option><option>Annette Lohse</option>
+        <option>Jane Lorenzen</option><option>Rachel Loussaert</option><option>Richard Lucas</option>
+        <option>Dan Luna</option><option>Sakshi Mali</option><option>Aaron Mark</option>
+        <option>Chase Martin</option><option>MN Medicherla</option><option>Chris Miller</option>
+        <option>Seth Milojevic</option><option>Jeremy Mitchell</option><option>Abdul Shahid Mohammed</option>
+        <option>Pam Montandon</option><option>Chirag Nangawat</option><option>Chris O'Connor</option>
+        <option>Ankur Patel</option><option>John Percy</option><option>Jenn Petersen</option>
+        <option>Joshua Phillips</option><option>Naresh Kumar Pothala</option><option>Jack Potter</option>
+        <option>Ramya Ramachandran</option><option>Balachandar Ramalingam</option><option>Barb Ramsey</option>
+        <option>Kris Rao</option><option>Kathiravan Rathinasamy</option><option>Mark Reesink</option>
+        <option>Timothy Riordan</option><option>Alexander Roelle</option><option>Terry Ruiz</option>
+        <option>Chris Rutt</option><option>Ravindranath Sagaram</option><option>Lingaraj Sarangi</option>
+        <option>Kalyanjit Sarkar</option><option>Todd Scharf</option><option>Haley Schimanski</option>
+        <option>Scott Schmelzer</option><option>David Schoaff</option><option>Jason Schroeder</option>
+        <option>Carter Schwalb</option><option>Tammy Shellady</option><option>Jared Sherwood</option>
+        <option>Emily Soukup</option><option>Karen Springer</option><option>Ashley Stephens</option>
+        <option>Jasmine Stokes</option><option>Mark Sturm</option><option>Abdur Sulaiman</option>
+        <option>Manoj Tangde</option><option>Patrick Tarosky</option><option>Suthagar Thangaraj</option>
+        <option>Noah Thompson</option><option>Neelima Timmayyagari</option><option>Vinh Tran</option>
+        <option>Priyanka Vankayalapati</option><option>Devendra Varma</option><option>Vaishnavi Vembar</option>
+        <option>Josh Volker</option><option>Justin Walton</option><option>Luke Watzke</option>
+        <option>Matthew Weggen</option><option>Matt Weisensteiner</option><option>Maxx Williams</option>
+        <option>Mike Williams</option><option>Chad Wixom</option><option>Taylor Worrall</option>
+        <option>Henry Yahn</option><option>Niranjan Yartha</option><option>Gnan Yempally</option>
+      </select>
+      <span class="name-hint" id="name-hint">159 members enrolled</span>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="s-done">0</div><div class="stat-l">Completed</div></div>
+      <div class="stat"><div class="stat-n" id="s-left">24</div><div class="stat-l">Remaining</div></div>
+      <div class="stat"><div class="stat-n" id="s-lines">0</div><div class="stat-l">Bingo lines</div></div>
+      <div class="stat"><div class="stat-n" id="s-pct">0%</div><div class="stat-l">Progress</div></div>
+    </div>
+
+    <div class="card-wrap">
+      <div class="col-hdrs">
+        <div class="col-hdr">B</div><div class="col-hdr">I</div><div class="col-hdr">N</div>
+        <div class="col-hdr">G</div><div class="col-hdr">O</div>
+      </div>
+      <div class="bingo-grid" id="bingo-grid"></div>
+    </div>
+
+    <div class="card-footer">
+      <span class="card-status" id="card-status">Select your name above to begin</span>
+      <button class="btn-reset" onclick="resetMember()">Reset my card</button>
+    </div>
+    <div class="bingo-banner" id="bingo-banner"></div>
+  </div>
+
+  <!-- ── LEADERBOARD VIEW ── -->
+  <div id="view-lb" class="view">
+    <div class="stats" style="margin-bottom:1rem">
+      <div class="stat"><div class="stat-n" id="lb-members">0</div><div class="stat-l">Participants</div></div>
+      <div class="stat"><div class="stat-n" id="lb-total">0</div><div class="stat-l">Completions</div></div>
+      <div class="stat"><div class="stat-n" id="lb-bingos">0</div><div class="stat-l">Bingo lines</div></div>
+      <div class="stat"><div class="stat-n" id="lb-leader" style="font-size:16px;padding-top:4px">—</div><div class="stat-l">Leader</div></div>
+    </div>
+    <div class="lb-controls">
+      <input class="lb-search" type="text" placeholder="Search by name..." oninput="filterLb()" id="lb-search">
+      <label class="toggle-label">
+        <input type="checkbox" id="lb-active" onchange="filterLb()"> Active only
+      </label>
+    </div>
+    <div class="lb-card">
+      <div class="lb-scroll">
+        <table class="lb-table">
+          <thead><tr>
+            <th style="width:36px">#</th>
+            <th>Member</th>
+            <th>Tasks</th>
+            <th style="width:90px">Progress</th>
+            <th>Bingo</th>
+            <th>Screenshots</th>
+          </tr></thead>
+          <tbody id="lb-body"></tbody>
+        </table>
+      </div>
+      <div class="lb-foot">All completions require a screenshot upload &nbsp;·&nbsp; 159 members enrolled</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── MODAL ── -->
+<div class="overlay" id="overlay" onclick="overlayClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title">Upload your screenshot</div>
+      <button class="modal-close" onclick="closeModal()">&#x2715;</button>
+    </div>
+    <div class="modal-task" id="modal-task"></div>
+    <div id="upload-zone" class="upload-zone" ondragover="onDrag(event,true)" ondragleave="onDrag(event,false)" ondrop="onDrop(event)">
+      <input type="file" id="file-input" accept="image/*" onchange="onFileChange()">
+      <div class="upload-icon">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M11 15V8M11 8L8 11M11 8L14 11" stroke="#7c878e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4 18h14" stroke="#7c878e" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="upload-lbl">Click to upload or drag &amp; drop</div>
+      <div class="upload-sub">PNG, JPG — screenshot of your Copilot Chat exchange</div>
+    </div>
+    <div id="preview-wrap" class="preview-wrap">
+      <img id="preview-img" src="" alt="Screenshot preview">
+      <div class="preview-meta" id="preview-meta"></div>
+      <span class="preview-change" onclick="changeFile()">Upload a different file</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" id="btn-confirm" onclick="confirmTask()">Mark complete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TASKS=["Summarize a long email thread","Write a PowerShell script","Explain an error message","Draft a ticket reply","Compare two tools or vendors","Write a troubleshooting guide","Turn notes into a document","Translate tech jargon","Review and improve a policy","Generate a meeting agenda","Write a runbook","Find risks in a config","Create a FAQ doc","Explain an event log","Draft a Teams announcement","Rewrite something concisely","Build an onboarding checklist","Summarize a technical doc","Suggest process improvements","Generate test cases","Write an outage notification","Explain a network concept","Draft presentation talking points","Create a change request template"];
+const LINES=[[0,1,2,3,4],[5,6,7,8,9],[10,11,12,13,14],[15,16,17,18,19],[20,21,22,23,24],[0,5,10,15,20],[1,6,11,16,21],[2,7,12,17,22],[3,8,13,18,23],[4,9,14,19,24],[0,6,12,18,24],[4,8,12,16,20]];
+const MEMBERS=["Anju Ahluwalia","Bobby Ahluwalia","Fayissolath Akanho","Shahnawaz Alam","Justin Allee","Robert Alsten","Joshua Anderson","Kate Backous","Matt Baker","Shankhayan Basu","Adam Begarly","Umapathy Bhattar","Ben Bizak","Matt Boardrow","Marcy Boeh","Tom Booth","Katie Briesch","Amy Brinser","Jeremiah Bristow","Cindy Brooks","Julie Brugger","Brad Buechler","Jeffrey Caldwell","Justin Cano","Brittany Carney","Kate Carter","Rohit Chilakala","Andrew Christen","Alex Corwin","David Ferreira e Cruz","Sandra Darnielle","Alwin Davids","Drew DeZeeuw","Brandi Dennis","Matsyagiri Devalapally","Jeff Devlin","Sarah Dixon","Casey Dodder","Ross Donelson","Robert Dotson","Jerry Dusek","Adam Earp","Todd Easterla","Stephanie Edwards","Liz Elliott","Rue Ellis","AJ Ellison","Kyle Empen","Ben Frere","Tiffany Fulrath","Brandon Garrett","Jesse Ghere","Ali Girer","William Gissel","Michael Grothusen","Srikanth Gubba","Talitha Haag","David Hackbarth","Gloria Hairston","Steve Halka","Kevin Hamilton","John Hanson","Wes Harden","Rachelle Harris","Lisa Harter","Amanda Heindel","Shay Helm","Scott Hentscher","Bapu Hirave","Patrick Holler","Eric Jaskolka","Edwin Johnson","Kay Jones","Tim Junis","Javaid Kalota","Prabhjot Kaur","Keith Keller","Jody Kirk","Russ Klaren","Erik Knouse","Hemant Kumar","Tony Van Laarhoven","Ajay Lageshetty","Tyler Lamb","Sam Lane","Tracy Lane","Luke Lawson","Jeff Lenninger","David Lineback","Annette Lohse","Jane Lorenzen","Rachel Loussaert","Richard Lucas","Dan Luna","Sakshi Mali","Aaron Mark","Chase Martin","MN Medicherla","Chris Miller","Seth Milojevic","Jeremy Mitchell","Abdul Shahid Mohammed","Pam Montandon","Chirag Nangawat","Chris O'Connor","Ankur Patel","John Percy","Jenn Petersen","Joshua Phillips","Naresh Kumar Pothala","Jack Potter","Ramya Ramachandran","Balachandar Ramalingam","Barb Ramsey","Kris Rao","Kathiravan Rathinasamy","Mark Reesink","Timothy Riordan","Alexander Roelle","Terry Ruiz","Chris Rutt","Ravindranath Sagaram","Lingaraj Sarangi","Kalyanjit Sarkar","Todd Scharf","Haley Schimanski","Scott Schmelzer","David Schoaff","Jason Schroeder","Carter Schwalb","Tammy Shellady","Jared Sherwood","Emily Soukup","Karen Springer","Ashley Stephens","Jasmine Stokes","Mark Sturm","Abdur Sulaiman","Manoj Tangde","Patrick Tarosky","Suthagar Thangaraj","Noah Thompson","Neelima Timmayyagari","Vinh Tran","Priyanka Vankayalapati","Devendra Varma","Vaishnavi Vembar","Josh Volker","Justin Walton","Luke Watzke","Matthew Weggen","Matt Weisensteiner","Maxx Williams","Mike Williams","Chad Wixom","Taylor Worrall","Henry Yahn","Niranjan Yartha","Gnan Yempally"];
+
+const STORAGE_PREFIX='hni_bingo_v4_';
+let currentMember=null,memberData={},pendingGI=null,pendingFile=null,allLbRows=[];
+
+// ── Storage helpers (localStorage fallback when window.storage unavailable) ──
+async function storeGet(key){
+  try{
+    if(window.storage){const r=await window.storage.get(key,true);if(r&&r.value)return r.value;}
+  }catch(e){}
+  return localStorage.getItem(key);
+}
+async function storeSet(key,val){
+  try{if(window.storage){await window.storage.set(key,val,true);return;}}catch(e){}
+  localStorage.setItem(key,val);
+}
+
+function skey(m){return STORAGE_PREFIX+m.replace(/[^a-zA-Z0-9]/g,'_');}
+async function loadMember(m){
+  try{const raw=await storeGet(skey(m));if(raw){const d=JSON.parse(raw);d.done=new Set(d.done||[]);d.shots=d.shots||{};return d;}}catch(e){}
+  return{done:new Set(),shots:{}};
+}
+async function saveMember(m,d){
+  await storeSet(skey(m),JSON.stringify({done:[...d.done],shots:d.shots}));
+}
+async function loadAll(){
+  for(const m of MEMBERS){memberData[m]=await loadMember(m);}
+}
+
+// ── Grid helpers ──
+function gi2ti(gi){return gi<12?gi:gi-1;}
+function isMarked(m,gi){if(gi===12)return true;const d=memberData[m];return d&&d.done instanceof Set&&d.done.has(gi2ti(gi));}
+function getBingoLines(m){return LINES.filter(l=>l.every(i=>isMarked(m,i)));}
+
+// ── Build grid ──
+function buildGrid(){
+  const g=document.getElementById('bingo-grid');g.innerHTML='';
+  for(let i=0;i<25;i++){
+    const c=document.createElement('div');
+    if(i===12){c.className='cell free';c.textContent='FREE';}
+    else{
+      const ti=gi2ti(i);c.className='cell';
+      const txt=document.createElement('span');txt.textContent=TASKS[ti];
+      const icon=document.createElement('div');icon.className='cell-icon';
+      icon.innerHTML='<svg width="10" height="10" viewBox="0 0 16 16" fill="none"><rect x="1" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="9" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 4L6.5 2h3l1 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg><span style="font-size:9px">screenshot</span>';
+      const ck=document.createElement('div');ck.className='cell-check';ck.textContent='✓ verified';
+      c.append(txt,icon,ck);c.onclick=()=>openModal(i);
+    }
+    g.appendChild(c);
+  }
+}
+
+function refreshGrid(){
+  if(!currentMember)return;
+  const cells=document.querySelectorAll('#bingo-grid .cell');
+  const bset=new Set(getBingoLines(currentMember).flat());
+  cells.forEach((c,i)=>{
+    if(i===12)return;
+    const marked=isMarked(currentMember,i),bingo=bset.has(i);
+    c.classList.toggle('done',marked&&!bingo);
+    c.classList.toggle('bingo-line',bingo);
+  });
+  updateStats();
+}
+
+function updateStats(){
+  if(!currentMember)return;
+  const d=memberData[currentMember]||{done:new Set()};
+  const done=d.done.size,lines=getBingoLines(currentMember).length,pct=Math.round(done/24*100);
+  document.getElementById('s-done').textContent=done;
+  document.getElementById('s-left').textContent=24-done;
+  document.getElementById('s-lines').textContent=lines;
+  document.getElementById('s-pct').textContent=pct+'%';
+  document.getElementById('card-status').textContent=done+' of 24 tasks completed — all verified by screenshot';
+  const b=document.getElementById('bingo-banner');
+  if(lines>0){b.style.display='block';b.textContent=lines===1?'Bingo! You completed a full line — notify your admin to claim your prize!':lines+' bingo lines — outstanding! Let your admin know.';}
+  else b.style.display='none';
+}
+
+// ── Modal ──
+function openModal(gi){
+  if(!currentMember){document.getElementById('member-select').focus();return;}
+  if(isMarked(currentMember,gi))return;
+  pendingGI=gi;pendingFile=null;
+  document.getElementById('modal-task').textContent='Task: '+TASKS[gi2ti(gi)];
+  showUploadZone();
+  document.getElementById('btn-confirm').classList.remove('ready');
+  document.getElementById('overlay').classList.add('open');
+}
+function closeModal(){document.getElementById('overlay').classList.remove('open');pendingGI=null;pendingFile=null;}
+function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
+function showUploadZone(){
+  document.getElementById('upload-zone').style.display='block';
+  document.getElementById('upload-zone').classList.remove('drag');
+  document.getElementById('preview-wrap').style.display='none';
+  document.getElementById('file-input').value='';
+}
+function changeFile(){showUploadZone();document.getElementById('btn-confirm').classList.remove('ready');}
+function onDrag(e,over){e.preventDefault();document.getElementById('upload-zone').classList.toggle('drag',over);}
+function onDrop(e){e.preventDefault();const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))processFile(f);}
+function onFileChange(){const f=document.getElementById('file-input').files[0];if(f)processFile(f);}
+function processFile(f){
+  pendingFile=f;
+  const r=new FileReader();
+  r.onload=e=>{
+    document.getElementById('preview-img').src=e.target.result;
+    document.getElementById('preview-meta').textContent=f.name+' · '+Math.round(f.size/1024)+' KB';
+    document.getElementById('upload-zone').style.display='none';
+    document.getElementById('preview-wrap').style.display='block';
+    document.getElementById('btn-confirm').classList.add('ready');
+  };
+  r.readAsDataURL(f);
+}
+async function confirmTask(){
+  if(!currentMember||pendingGI===null||!pendingFile)return;
+  const ti=gi2ti(pendingGI);
+  const d=memberData[currentMember];
+  d.done.add(ti);d.shots[ti]={name:pendingFile.name,size:pendingFile.size,ts:Date.now()};
+  await saveMember(currentMember,d);
+  closeModal();refreshGrid();buildLbRows();renderLb();
+}
+
+// ── Member select ──
+async function onMemberChange(){
+  const v=document.getElementById('member-select').value;
+  if(!v){currentMember=null;return;}
+  currentMember=v;
+  if(!memberData[v]||!(memberData[v].done instanceof Set))memberData[v]=await loadMember(v);
+  document.getElementById('name-hint').textContent=v.split(' ')[0]+"'s progress";
+  refreshGrid();
+}
+
+async function resetMember(){
+  if(!currentMember)return;
+  if(!confirm('Reset all progress for '+currentMember+'? This cannot be undone.'))return;
+  memberData[currentMember]={done:new Set(),shots:{}};
+  await saveMember(currentMember,memberData[currentMember]);
+  refreshGrid();buildLbRows();renderLb();
+}
+
+// ── Nav ──
+function switchView(v){
+  document.getElementById('view-board').classList.toggle('active',v==='board');
+  document.getElementById('view-lb').classList.toggle('active',v==='lb');
+  document.getElementById('btn-board').classList.toggle('on',v==='board');
+  document.getElementById('btn-lb').classList.toggle('on',v==='lb');
+  if(v==='lb'){buildLbRows();renderLb();}
+}
+
+// ── Leaderboard ──
+function buildLbRows(){
+  allLbRows=MEMBERS.map(m=>{
+    const d=memberData[m]||{done:new Set(),shots:{}};
+    const done=d.done instanceof Set?d.done.size:0;
+    const shots=Object.keys(d.shots||{}).length;
+    const lines=LINES.filter(l=>l.every(i=>{if(i===12)return true;const ti=gi2ti(i);return d.done instanceof Set&&d.done.has(ti);})).length;
+    return{name:m,done,lines,shots};
+  }).sort((a,b)=>b.done-a.done||b.lines-a.lines||a.name.localeCompare(b.name));
+}
+
+function filterLb(){
+  const q=document.getElementById('lb-search').value.toLowerCase();
+  const activeOnly=document.getElementById('lb-active').checked;
+  const filtered=allLbRows.filter(r=>r.name.toLowerCase().includes(q)&&(!activeOnly||r.done>0));
+  renderFiltered(filtered);
+}
+
+function renderLb(){filterLb();}
+
+function renderFiltered(rows){
+  const active=allLbRows.filter(r=>r.done>0);
+  document.getElementById('lb-members').textContent=active.length;
+  document.getElementById('lb-total').textContent=active.reduce((a,r)=>a+r.done,0);
+  document.getElementById('lb-bingos').textContent=active.reduce((a,r)=>a+r.lines,0);
+  document.getElementById('lb-leader').textContent=active.length?active[0].name.split(' ')[0]:'—';
+
+  const tbody=document.getElementById('lb-body');
+  if(!rows.length){
+    tbody.innerHTML='<tr class="empty-row"><td colspan="6">No members match — try a different search.</td></tr>';return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  let rank=0;
+  tbody.innerHTML=rows.map((r,i)=>{
+    const active=r.done>0;if(active)rank++;
+    const pct=Math.round(r.done/24*100);
+    const medal=rank<=3&&active?`<span style="font-size:13px;margin-right:3px">${medals[rank-1]}</span>`:'';
+    const bb=r.lines>0?`<span class="bingo-pill">${r.lines}</span>`:'';
+    const dim=active?'':'opacity:0.4';
+    return`<tr style="${dim}">
+      <td style="color:var(--gray);font-size:12px">${active?rank:'—'}</td>
+      <td>${medal}${r.name}${bb}</td>
+      <td style="font-weight:${active?600:400};color:${active?'var(--red)':'var(--gray)'}">${r.done}<span style="font-size:11px;color:var(--gray);font-weight:400"> / 24</span></td>
+      <td><div class="pb-wrap"><div class="pb-fill" style="width:${pct}%"></div></div></td>
+      <td style="color:${r.lines>0?'var(--lime-dark)':'var(--gray)'};font-weight:${r.lines>0?700:400}">${r.lines>0?r.lines:'—'}</td>
+      <td>${r.shots>0?`<span class="shot-pill">${r.shots} uploaded</span>`:'<span style="color:var(--gray);font-size:12px">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Init ──
+async function init(){
+  buildGrid();
+  await loadAll();
+  buildLbRows();
+}
+init();
+</script>
+</body>
+</html>
